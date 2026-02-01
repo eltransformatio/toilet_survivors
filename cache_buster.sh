@@ -1,24 +1,30 @@
 #!/bin/bash
-echo "Cache busting"
 
-# Go to the folder where the project is exported to
-cd docs || exit
+echo "Cache busting..."
 
-# Get the current timestamp
-timestamp=$(date +"%Y%m%d%H%M%S")
+# Define the export directory
+EXPORT_DIR="docs"
 
-# Loop through each file in the current directory
-for file in *; do
-  if [ -f "$file" ] && [[ "$file" != index.html ]]; then
-    filename="${file%.*}"
-    extension="${file##*.}"
-    mv "$file" "${filename}_${timestamp}.${extension}"
-    #Replace instances of file name in html
-    sed -i -- "s/${filename}.${extension}/${filename}_${timestamp}.${extension}/g" index.html
-  fi
+# Generate a timestamp (seconds since epoch)
+TIMESTAMP=$(date +%s)
+
+# Go to the export directory
+cd "$EXPORT_DIR" || exit
+
+# Remove OLD renamed files from previous exports
+# (Godot export doesn't overwrite them if names are different)
+rm index-*.*
+
+# Rename the new export files to include the timestamp
+for file in index.*
+do
+    mv "$file" "${file/index/index-$TIMESTAMP}"
 done
 
-sed -i -- "s/mainPack: null/mainPack: 'index_${timestamp}.pck'/g" index_$timestamp.js
-sed -i -- "s/executable: ''/executable: 'index_${timestamp}'/g" index_$timestamp.js
+# Name the index.html file back to just index.html so the URL remains the same
+mv index-"${TIMESTAMP}".html index.html
 
-sed -i -- "s/const exe = this.config.executable;/const exe = 'index_${timestamp}';/g" index_$timestamp.js
+# Replace all instances of the original 'index' filename with the new timestamped name in the index.html
+sed -i -- "s/index/index-${TIMESTAMP}/g" index.html
+
+echo "Cache busting complete. Files renamed with timestamp: $TIMESTAMP"
